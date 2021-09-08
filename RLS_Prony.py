@@ -19,15 +19,13 @@ class RLS_Prony:
         M: number of variables including constant (model order)
         lam: forgetting factor
         '''
-
         
         self.M = M # Number of variables
         self.lam = lam # Forgetting Factor
         self.Ts = Ts # Sampling time
         
-        # Initialise pseudo inverses
+        # Initialise error covariance
         self.P1 = np.matrix(np.identity(self.M))
-        self.P2 = 10e100*np.matrix(np.identity(self.M))
         
         # Initialise errors
         self.e1 = 0
@@ -89,13 +87,14 @@ class RLS_Prony:
         #self.y_est = np.asscalar(self.A.T@un)
    
     def prony(self):
-        lam_inv = 1/self.lam
         y = -np.array(self.obs_buffer)
+        y = np.flip(y)
         
         self.r = self.get_roots()
             
         # Create new row of the Vandermonde matrix
         uz = np.asmatrix(np.zeros([self.M,len(self.r)],dtype=complex))
+        
         
         for i in range(self.M):
             for j in range(len(self.r)):
@@ -104,27 +103,7 @@ class RLS_Prony:
         # Replace Inf values with max     
         uz = self.remove_inf(uz)
         
-        #self.H = np.array(np.linalg.lstsq(uz,y)[0])
-        
-        self.H = np.array(lstsq(uz,y)[0])
-        
-        # # Iterate algorithm
-        # #Pn_z = self.P2.copy()
-        # Pn_z = 100*np.matrix(np.identity(self.M))
-        
-        # K = (lam_inv*Pn_z@uz)/(1+lam_inv*uz.T@Pn_z@uz) # Gain
-        # K = self.remove_inf(K)
-    
-        # self.e2 = np.asscalar(y - self.H.T@uz) # Test to see how the old estimate compares to the new data
-    
-        # self.H = K*self.e2
-    
-        # #self.H = self.H + K*self.e2 # New coefficients are the old + the gain * the error
-    
-        # self.P2 = lam_inv*Pn_z - lam_inv*K@uz.T@Pn_z
-        
-        # self.y_est = np.asscalar(self.H.T@uz)
-        
+        self.H = np.array(lstsq(uz,y)[0])      
         return
     
     def get_prony(self):
@@ -135,11 +114,11 @@ class RLS_Prony:
         
         # Remove non-dominant poles
         if np.count_nonzero(rts) > 1:
-            # d = rts[np.real(rts) < 0]
-            # d = np.min(-np.real(d))
+            #d = rts[np.real(rts) < 0]
+            #d = np.min(-np.real(d))
             #d = np.min(np.abs(np.real(rts)))
             d = np.min(rts[np.real(rts) >= 0])
-            Lp = 10*np.real(d) # Set poles threshold
+            Lp = 500*np.real(d) # Set poles threshold
         
         #print(Lp)
         
@@ -152,24 +131,40 @@ class RLS_Prony:
                 B.append(rts[i])
                 A.append(pA[i])
                 
-        B = np.log(np.abs(B))/self.Ts
-        B[np.isneginf(np.real(B))] = 0
-        return A,B
+        #B = np.log(B)/self.Ts
+        #B[np.isneginf(np.real(B))] = 0
+        
+        ai = np.log(np.abs(B))/self.Ts
+        bi = (np.arctan(np.imag(B)/np.real(B)))/self.Ts
+        
+        lam_i = ai + (bi)*1j
+        
+        return A,lam_i
     
-    def get_est(self,t): 
+    def get_est(self): 
         
         y_est = 0
         k = (self.num_obs)*self.Ts
-        k = 0
+        k = self.M-1
         
         A,B = self.get_prony()
         
-        if len(A) != len(B):
-            print('zero')
-            return 0
+        # if len(A) != len(B):
+        #     print('zero')
+        #     return 0
              
         for j in range(len(A)):
-            y_est = y_est + np.asscalar(A[j]*np.exp(B[j]*k))
+            y_est = y_est + A[j]*np.exp(B[j]*k)
+        return y_est
+    
+    def get_est2(self,t): 
+        
+        y_est = float(0)
+        
+        A,B = self.get_prony()
+        
+        for j in range(len(A)):
+            y_est = y_est + A[j]*np.exp(B[j]*(t+self.M))
         return y_est
         
 
