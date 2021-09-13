@@ -12,7 +12,7 @@ from RLS_Prony import RLS_Prony
 import scipy.io as sio
 import math
 
-mat = sio.loadmat('shipData_4.mat')
+mat = sio.loadmat('shipData_6.mat')
 t = np.asarray(mat["t"]).flatten()
 data = np.asarray(mat["Z"]).flatten()
 N = len(t)
@@ -23,7 +23,7 @@ N = len(t)
 # t = np.arange(0,T,T/N)
 # data = np.array([f(i) for i in t])
 
-M = 14 # Number of coefficients including x**0
+M = 13 # Number of coefficients including x**0
 lam = 0.8 # Forgetting factor
 Ts = t[1]-t[0]
 prony = RLS_Prony(M,lam,Ts)
@@ -34,7 +34,7 @@ yt = []
 
 tp = 0
 
-N_1 = 150
+N_1 = 200
 
 for i,y in enumerate(data[0:N_1]):
     prony.update(y)
@@ -63,12 +63,12 @@ er.set_title('Error')
 fig, yp = mpl.subplots(1, 1, tight_layout=True)
 fig.set_size_inches(8,4)
 yp.plot(t[0:N_1],data[0:N_1],linewidth=2)
-yp.plot(t[0:N_1],np.real(yt),'--',linewidth=4)
+yp.plot(t[0:N_1],np.real(yt),'--',linewidth=2)
 yp.set_ylabel('Heave (m)')
 yp.set_xlabel('Time (s)')
 yp.legend(['Simulated Heave Motion', 'Prony Approximation'])
 #fig.savefig('pronyTest.eps')
-yp.set_ylim([-0.01,0.01])
+# yp.set_ylim([-0.02,0.02])
 #yp.set_xlim([150,300])
 
 
@@ -76,9 +76,11 @@ yp.set_ylim([-0.01,0.01])
 ye = []
 
 for dt in range(len(t[N_1:])):
-    ye.append(prony.get_est2(dt))
+    ye.append(prony.predict(dt*Ts))
 
 yp.plot(t[N_1:],data[N_1:],linewidth=1)
 yp.plot(t[N_1:],np.real(ye),'--',linewidth=2)  
-yp.set_ylim([-0.01,0.01])
+yp.set_ylim([-0.02,0.02])
+yp.set_ylim([-3,3])
+#yp.set_xlim([50,100])
 

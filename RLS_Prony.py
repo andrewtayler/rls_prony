@@ -36,6 +36,7 @@ class RLS_Prony:
         self.H = np.matrix(np.zeros([M,1]))  
         
         self.obs_buffer = [0]
+        self.obs_limit = self.M
         
         # Fill with buffer with zeros up to the model order
         while(len(self.obs_buffer) < (self.M)):
@@ -55,7 +56,9 @@ class RLS_Prony:
  
         # Slide the input window along
         self.obs_buffer.insert(0,-y)
-        self.obs_buffer.pop()
+        
+        if len(self.obs_buffer) > self.obs_limit:
+            self.obs_buffer.pop()
      
         self.num_obs += 1
         
@@ -67,7 +70,7 @@ class RLS_Prony:
         lam_inv = 1/self.lam
         
         # Get past inputs [y(N-2) y(N-3) ... y(N-M)]
-        un = np.asmatrix(self.obs_buffer).T 
+        un = np.asmatrix(self.obs_buffer[0:self.M]).T 
         
         Pn_1 = self.P1
         
@@ -93,10 +96,10 @@ class RLS_Prony:
         self.r = self.get_roots()
             
         # Create new row of the Vandermonde matrix
-        uz = np.asmatrix(np.zeros([self.M,len(self.r)],dtype=complex))
+        uz = np.asmatrix(np.zeros([len(self.obs_buffer),len(self.r)],dtype=complex))
         
         
-        for i in range(self.M):
+        for i in range(len(self.obs_buffer)):
             for j in range(len(self.r)):
                 uz[i,j] = self.r[j]**(i)
             
@@ -113,20 +116,25 @@ class RLS_Prony:
         Lp = math.inf
         
         # Remove non-dominant poles
-        if np.count_nonzero(rts) > 1:
+        if np.count_nonzero(rts) > 2:
             #d = rts[np.real(rts) < 0]
             #d = np.min(-np.real(d))
             #d = np.min(np.abs(np.real(rts)))
-            d = np.min(rts[np.real(rts) >= 0])
-            Lp = 500*np.real(d) # Set poles threshold
+            try:
+                d = rts[np.real(rts) < 0]
+                d = np.max(np.real(d))
+                Lp = 5*np.abs(np.real(d)) + 1e-8# Set poles threshold
+            except:
+                Lp = math.inf
         
         #print(Lp)
         
         A = []
         B = []
+
         
         for i in range(len(pA)):           
-            if np.real(np.abs(np.real(rts[i]))) <= Lp:
+            if np.abs(np.real(rts[i])) <= Lp:
 
                 B.append(rts[i])
                 A.append(pA[i])
@@ -145,7 +153,7 @@ class RLS_Prony:
         
         y_est = 0
         k = (self.num_obs)*self.Ts
-        k = self.M-1
+        k = (self.obs_limit-1)*self.Ts
         
         A,B = self.get_prony()
         
@@ -157,14 +165,15 @@ class RLS_Prony:
             y_est = y_est + A[j]*np.exp(B[j]*k)
         return y_est
     
-    def get_est2(self,t): 
+    def predict(self,t): 
         
         y_est = float(0)
+        k = (self.obs_limit)*self.Ts
         
         A,B = self.get_prony()
         
         for j in range(len(A)):
-            y_est = y_est + A[j]*np.exp(B[j]*(t+self.M))
+            y_est = y_est + A[j]*np.exp(B[j]*(t+k))
         return y_est
         
 
@@ -187,13 +196,6 @@ class RLS_Prony:
         
         return r
 
-    
-    def predict(self, x):
-        '''
-        Predict the value of observation x. x should be a numpy matrix (col vector)
-        '''
-        return float(self.w.T*x)
-    
     def remove_inf(self,mat):
         mat_r = np.asarray(np.real(mat))
         mat_i = np.asarray(np.imag(mat))
