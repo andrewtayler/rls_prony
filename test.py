@@ -12,7 +12,7 @@ from RLS_Prony import RLS_Prony
 import scipy.io as sio
 import math
 
-mat = sio.loadmat('shipData_6.mat')
+mat = sio.loadmat('shipData_4.mat')
 t = np.asarray(mat["t"]).flatten()
 data = np.asarray(mat["Z"]).flatten()
 N = len(t)
@@ -81,6 +81,6 @@ for dt in range(len(t[N_1:])):
 yp.plot(t[N_1:],data[N_1:],linewidth=1)
 yp.plot(t[N_1:],np.real(ye),'--',linewidth=2)  
 yp.set_ylim([-0.02,0.02])
-yp.set_ylim([-3,3])
-#yp.set_xlim([50,100])
+# yp.set_ylim([-1,1])
+# yp.set_xlim([0,100])
 

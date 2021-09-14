@@ -115,39 +115,35 @@ class RLS_Prony:
         rts = self.get_roots()     
         Lp = math.inf
         
+        ai = np.log(np.abs(rts))/self.Ts
+        bi = (np.arctan(np.imag(rts)/np.real(rts)))/self.Ts
+        
+        lam_i = ai + (bi)*1j
+        
         # Remove non-dominant poles
-        if np.count_nonzero(rts) > 2:
-            #d = rts[np.real(rts) < 0]
-            #d = np.min(-np.real(d))
-            #d = np.min(np.abs(np.real(rts)))
-            try:
-                d = rts[np.real(rts) < 0]
-                d = np.max(np.real(d))
-                Lp = 5*np.abs(np.real(d)) + 1e-8# Set poles threshold
-            except:
-                Lp = math.inf
+        try:
+            d = lam_i[np.real(lam_i) < 0]
+            d = np.max(np.real(d))
+            Lp = 1e4*np.abs(np.real(d))# Set poles threshold
+        except:
+            Lp = math.inf
         
         #print(Lp)
         
         A = []
         B = []
-
         
         for i in range(len(pA)):           
-            if np.abs(np.real(rts[i])) <= Lp:
-
-                B.append(rts[i])
+            if np.abs(np.real(lam_i[i])) < Lp:
+                B.append(lam_i[i])
                 A.append(pA[i])
-                
-        #B = np.log(B)/self.Ts
-        #B[np.isneginf(np.real(B))] = 0
         
-        ai = np.log(np.abs(B))/self.Ts
-        bi = (np.arctan(np.imag(B)/np.real(B)))/self.Ts
+        # ai = np.log(np.abs(B))/self.Ts
+        # bi = (np.arctan(np.imag(B)/np.real(B)))/self.Ts
         
-        lam_i = ai + (bi)*1j
+        # lam_i = ai + (bi)*1j
         
-        return A,lam_i
+        return A,B
     
     def get_est(self): 
         
