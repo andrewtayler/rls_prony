@@ -12,7 +12,7 @@ from RLS_Prony import RLS_Prony
 import scipy.io as sio
 import math
 
-mat = sio.loadmat('shipData_4.mat')
+mat = sio.loadmat('shipData_6.mat')
 t = np.asarray(mat["t"]).flatten()
 data = np.asarray(mat["Z"]).flatten()
 N = len(t)
@@ -23,8 +23,8 @@ N = len(t)
 # t = np.arange(0,T,T/N)
 # data = np.array([f(i) for i in t])
 
-M = 13 # Number of coefficients including x**0
-lam = 0.8 # Forgetting factor
+M = 15 # Number of coefficients including x**0
+lam = 0.7 # Forgetting factor
 Ts = t[1]-t[0]
 prony = RLS_Prony(M,lam,Ts)
 
@@ -34,19 +34,17 @@ yt = []
 
 tp = 0
 
-N_1 = 200
+N_1 = 500
 
 for i,y in enumerate(data[0:N_1]):
     prony.update(y)
-
     e.append(prony.get_error())
-    
-    yt.append(prony.get_est())
+    yt.append(prony.predict(-1*Ts))
     
 
-print(f'Coefficients are: {prony.A}')
-print(f'Roots are: {prony.get_roots()}')
-
+print('Prony data capture complete.')
+print(f'The Residues are {prony.get_prony()[0]}')
+print(f'The Dominant Poles are {prony.get_prony()[1]}')
 
 #%% Plotting
 
@@ -54,13 +52,14 @@ fig_2 = mpl.figure()
 er = fig_2.add_axes([0,0,1,1])
 #er.plot(t,np.real(e))
 er.plot(t[0:N_1],e)
+er.set_yscale('log')
 er.set_title('Error')
-#er.set_ylim([-10,10])
+# er.set_ylim([-5,5])
 #er.set_xlim([0,15])
 
 #%%
 
-fig, yp = mpl.subplots(1, 1, tight_layout=True)
+fig, yp = mpl.subplots()
 fig.set_size_inches(8,4)
 yp.plot(t[0:N_1],data[0:N_1],linewidth=2)
 yp.plot(t[0:N_1],np.real(yt),'--',linewidth=2)
@@ -76,11 +75,13 @@ yp.legend(['Simulated Heave Motion', 'Prony Approximation'])
 ye = []
 
 for dt in range(len(t[N_1:])):
-    ye.append(prony.predict(dt*Ts))
+    ye.append(prony.predict((dt)*Ts))
 
 yp.plot(t[N_1:],data[N_1:],linewidth=1)
 yp.plot(t[N_1:],np.real(ye),'--',linewidth=2)  
-yp.set_ylim([-0.02,0.02])
+# yp.set_ylim([-0.01,0.01])
+yp.vlines(N_1*Ts,-1,1, linestyles ="dotted", colors ="k", linewidth=2)
 # yp.set_ylim([-1,1])
-# yp.set_xlim([0,100])
+# yp.set_xlim([100,150])
+mpl.show()
 
